@@ -27,7 +27,8 @@
     "build": "tsc --build tsconfig.release.json",
     "start": "wrangler dev",
     "test": "vitest",
-    "format": "prettier --write \"{src,test}/**/*.ts\" index.ts"
+    "format": "prettier --write \"{src,test}/**/*.ts\" index.ts",
+    "prepublishOnly": "npm run build"
   },
   "homepage": "https://github.com/kibertoad/chatgpt-cloudflare",
   "repository": {
