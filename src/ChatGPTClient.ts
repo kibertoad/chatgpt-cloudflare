@@ -63,29 +63,36 @@ export class ChatGPTClient {
     };
     try {
       const response = await this.post(BASE_URL, body, headers);
-      const json = (await response.json()) as any;
-      if ("error" in json) {
-        const error = new Error(json.error.message)
+      const responseBody = (await response.json()) as Record<string, any>;
+
+      // Error handling
+      if (Object.prototype.hasOwnProperty.call(responseBody, "error")) {
+        const error = new Error(responseBody.error.message);
         this.errorHandler(error);
-        throw error
-      } else if ("choices" in json && json.choices.length > 0) {
-        const responseContent = json.choices[0].message.content;
-        context.addMessage({
-          role: ASSISTANT_LABEL,
-          content: responseContent,
-        });
-        return {
-          text: responseContent,
-          id: json.id,
-        };
-      } else {
-        const error = new Error("Did not receive any message choices")
-        this.errorHandler(error);
-        throw error
+        throw error;
       }
+      if (
+        !Object.prototype.hasOwnProperty.call(responseBody, "choices") ||
+        responseBody.choices.length === 0
+      ) {
+        const error = new Error("Did not receive any message choices");
+        this.errorHandler(error);
+        throw error;
+      }
+
+      // Happy path
+      const responseContent = responseBody.choices[0].message.content;
+      context.addMessage({
+        role: ASSISTANT_LABEL,
+        content: responseContent,
+      });
+      return {
+        text: responseContent,
+        id: responseBody.id,
+      };
     } catch (error) {
       this.errorHandler(error as Error);
-      throw error
+      throw error;
     }
   }
 }
