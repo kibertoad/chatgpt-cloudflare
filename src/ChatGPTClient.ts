@@ -1,62 +1,86 @@
-const CHATGPT_MODEL = 'gpt-3.5-turbo'
+import { ConversationContext, Message } from "./ConversationContext";
+import { defaultErrorHandler, ErrorHandler } from "./Logger";
 
-const USER_LABEL = 'user'
-const SYSTEM_LABEL = 'system'
+const CHATGPT_MODEL = "gpt-3.5-turbo";
 
-const BASE_URL = "https://api.openai.com/v1/chat/completions"
+const USER_LABEL = "user"; // user input
+const SYSTEM_LABEL = "system"; // context
+const ASSISTANT_LABEL = "assistant"; // ai response
+
+const BASE_URL = "https://api.openai.com/v1/chat/completions";
+
+export type ChatGPTRequestBody = {
+  model: "gpt-3.5-turbo";
+  messages: readonly Message[];
+  temperature?: number;
+  presence_penalty?: number;
+  frequency_penalty?: number;
+};
 
 export type PromptParams = {
-    prompt: string
-    systemContext?: string
-    parentMessageId?: string
-}
+  prompt: string;
+  systemContext?: string;
+};
 
 export class ChatGPTClient {
-    apiKey: string
+  private readonly apiKey: string;
+  private readonly errorHandler: ErrorHandler;
 
-    constructor(apiKey: string) {
-        this.apiKey = apiKey
-    }
+  constructor(apiKey: string, errorHandler?: ErrorHandler) {
+    this.apiKey = apiKey;
+    this.errorHandler = errorHandler || defaultErrorHandler;
+  }
 
-    private post(url: string, body: Record<string, unknown>, headers?: HeadersInit) {
-        let allHeaders = headers || {}
-        // @ts-ignore
-        allHeaders["Content-Type"] = "application/json;charset=utf-8"
-        return fetch(url, {
-            method: "post",
-            body: JSON.stringify(body),
-            headers: allHeaders
-        })
-    }
+  private post(url: string, body: ChatGPTRequestBody, headers?: HeadersInit) {
+    let allHeaders = headers || {};
+    // @ts-ignore
+    allHeaders["Content-Type"] = "application/json;charset=utf-8";
+    return fetch(url, {
+      method: "post",
+      body: JSON.stringify(body),
+      headers: allHeaders,
+    });
+  }
 
-    async getResponse(params: PromptParams) {
-        const body = {
-            model: CHATGPT_MODEL,
-            messages: [
-                {"role": SYSTEM_LABEL, "content": params.systemContext || "You are a helpful assistant."},
-                {"role": USER_LABEL, "content": params.prompt}
-            ],
-        }
-        const headers = {
-            "Authorization": "Bearer " + this.apiKey
-        }
-        try {
-            const response = await this.post(BASE_URL, body, headers)
-            const json = await response.json() as any
-            console.log(JSON.stringify(json))
-            if ("error" in json) {
-                throw new Error(json.error.message)
-            } else if ("choices" in json && json.choices.length > 0) {
-                return {
-                    text: json.choices[0].message.content,
-                    id: json.id,
-                }
-            } else {
-                throw new Error("Did not receive any message choices")
-            }
-        } catch (error) {
-            console.log(error)
-            throw error
-        }
+  async getResponse(
+    params: PromptParams,
+    context: ConversationContext = new ConversationContext()
+  ) {
+    const newMessages: Message[] = [];
+    if (params.systemContext) {
+      newMessages.push({ role: SYSTEM_LABEL, content: params.systemContext });
     }
+    newMessages.push({ role: USER_LABEL, content: params.prompt });
+    context.addMessages(newMessages);
+    const finalPrompt = [...context.messages];
+
+    const body = {
+      model: CHATGPT_MODEL,
+      messages: finalPrompt,
+    } satisfies ChatGPTRequestBody;
+    const headers = {
+      Authorization: "Bearer " + this.apiKey,
+    };
+    try {
+      const response = await this.post(BASE_URL, body, headers);
+      const json = (await response.json()) as any;
+      if ("error" in json) {
+        this.errorHandler(new Error(json.error.message));
+      } else if ("choices" in json && json.choices.length > 0) {
+        const responseContent = json.choices[0].message.content;
+        context.addMessage({
+          role: ASSISTANT_LABEL,
+          content: responseContent,
+        });
+        return {
+          text: responseContent,
+          id: json.id,
+        };
+      } else {
+        this.errorHandler(new Error("Did not receive any message choices"));
+      }
+    } catch (error) {
+      this.errorHandler(error as Error);
+    }
+  }
 }

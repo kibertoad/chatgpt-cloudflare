@@ -1,4 +1,4 @@
-import {ChatGPTClient} from "../src/ChatGPTClient";
+import { ChatGPTClient } from "../src/ChatGPTClient";
 
 /**
  * Welcome to Cloudflare Workers! This is your first worker.
@@ -10,40 +10,31 @@ import {ChatGPTClient} from "../src/ChatGPTClient";
  * Learn more at https://developers.cloudflare.com/workers/
  */
 export interface Env {
-	OPENAI_API_KEY: string
-	// Example binding to KV. Learn more at https://developers.cloudflare.com/workers/runtime-apis/kv/
-	// MY_KV_NAMESPACE: KVNamespace;
-	//
-	// Example binding to Durable Object. Learn more at https://developers.cloudflare.com/workers/runtime-apis/durable-objects/
-	// MY_DURABLE_OBJECT: DurableObjectNamespace;
-	//
-	// Example binding to R2. Learn more at https://developers.cloudflare.com/workers/runtime-apis/r2/
-	// MY_BUCKET: R2Bucket;
-	//
-	// Example binding to a Service. Learn more at https://developers.cloudflare.com/workers/runtime-apis/service-bindings/
-	// MY_SERVICE: Fetcher;
+  OPENAI_API_KEY: string;
 }
 
 export default {
-	async fetch(
-		request: Request,
-		env: Env,
-		ctx: ExecutionContext
-	): Promise<Response> {
-		const openAiClient = new ChatGPTClient(env.OPENAI_API_KEY)
-		const body = await request.json() as Record<string, any>
-		console.log(JSON.stringify(body))
+  async fetch(
+    request: Request,
+    env: Env,
+    ctx: ExecutionContext
+  ): Promise<Response> {
+    const openAiClient = new ChatGPTClient(env.OPENAI_API_KEY);
+    const body = (await request.json()) as Record<string, any>;
 
-		const response = await openAiClient.getResponse({
-				prompt: 'After this sentence, I will give you some text; please repeat all of it verbatim, but add an exclamation point in its end. \n ' + body.prompt,
-			}
-		)
+    const response = await openAiClient.getResponse({
+      prompt:
+        "After this sentence, I will give you some text; please repeat all of it verbatim, but add an exclamation point in its end. \n " +
+        body.prompt,
+      systemContext: "You are a helpful assistant.",
+    });
 
-		const responseText = response.text
+    const responseText = response.text;
 
-		return new Response(JSON.stringify({
-			response: responseText,
-		}));
-	},
+    return new Response(
+      JSON.stringify({
+        response: responseText,
+      })
+    );
+  },
 };
-

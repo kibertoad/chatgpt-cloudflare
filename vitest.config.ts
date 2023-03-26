@@ -2,6 +2,7 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
     test: {
+        watch: false,
         testTimeout: 50000,
         environment: "miniflare",
         // Configuration is automatically loaded from `.env`, `package.json` and
