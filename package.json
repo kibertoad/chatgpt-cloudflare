@@ -1,6 +1,6 @@
 {
   "name": "chatgpt-cloudflare",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "license": "MIT",
   "description": "ChatGPT API client, compatible with Cloudflare Workers",
   "maintainers": [
