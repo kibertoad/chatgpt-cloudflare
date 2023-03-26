@@ -65,7 +65,9 @@ export class ChatGPTClient {
       const response = await this.post(BASE_URL, body, headers);
       const json = (await response.json()) as any;
       if ("error" in json) {
-        this.errorHandler(new Error(json.error.message));
+        const error = new Error(json.error.message)
+        this.errorHandler(error);
+        throw error
       } else if ("choices" in json && json.choices.length > 0) {
         const responseContent = json.choices[0].message.content;
         context.addMessage({
@@ -77,10 +79,13 @@ export class ChatGPTClient {
           id: json.id,
         };
       } else {
-        this.errorHandler(new Error("Did not receive any message choices"));
+        const error = new Error("Did not receive any message choices")
+        this.errorHandler(error);
+        throw error
       }
     } catch (error) {
       this.errorHandler(error as Error);
+      throw error
     }
   }
 }
